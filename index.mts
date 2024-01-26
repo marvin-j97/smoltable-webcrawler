@@ -294,6 +294,7 @@ async function crawlSite(url: string, force = false): Promise<void> {
   }
 
   if (!response.headers.get("content-type")?.includes("html")) {
+    console.log(`${url} is not HTML`);
     return;
   }
 
