@@ -313,8 +313,6 @@ async function crawlSite(url: string, force = false): Promise<void> {
       }))
       // Filter empty texts
       .filter(({ text, href }) => !!href && !!text)
-      // Filter .exe and .pdf files
-      .filter(({ href }) => !href.endsWith(".pdf") && href.endsWith(".exe"))
       // Filter by blacklist
       .filter(({ href }) => !isBlacklisted(new URL(resolveUrl(url, href))))
       // Filter invalid hrefs
