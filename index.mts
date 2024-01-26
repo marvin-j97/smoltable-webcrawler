@@ -35,7 +35,7 @@ const LIMIT = 10_000;
 async function storeDocument(formattedUrl: string, html: string): Promise<void> {
   console.log(`Storing HTML document of ${formattedUrl}`);
 
-  await queueTable.write([
+  await mainTable.write([
     {
       row_key: formattedUrl,
       cells: [
