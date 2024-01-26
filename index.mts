@@ -222,6 +222,9 @@ const HREF_BLACKLIST = [
   "/w/",
   "/api/",
 
+  "tel:",
+  "mailto:",
+
   // https://en.wikipedia.org/wiki/Wikipedia:Namespace
   "/wiki/Help:",
   "/wiki/Template:",
