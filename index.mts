@@ -290,6 +290,10 @@ async function crawlSite(url: string, force = false): Promise<void> {
     return;
   }
 
+  if (!response.headers.get("content-type")?.includes("html")) {
+    return;
+  }
+
   if (response.ok) {
     const html = await response.text();
     const $ = cheerio(html);
