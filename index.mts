@@ -3,7 +3,7 @@
  */
 
 import { randomUUID } from "node:crypto";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { appendFile } from "node:fs/promises";
 import { resolve as resolveUrl } from "node:url";
 
@@ -23,16 +23,19 @@ const STORE_SUB_PAGES = true;
 const ENTRY_POINT = "https://en.wikipedia.org/wiki/Main_Page";
 const STAY_ON_PAGE = "https://en.wikipedia.org";
 
-const STORE_DOCUMENTS = true;
+const STORE_DOCUMENTS = false;
 
-const PARALLELISM = 1;
+const PARALLELISM = 4;
 const LIMIT = 10_000;
 
 //
 // ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 //
 
-async function storeDocument(formattedUrl: string, html: string): Promise<void> {
+async function storeDocument(
+  formattedUrl: string,
+  html: string
+): Promise<void> {
   console.log(`Storing HTML document of ${formattedUrl}`);
 
   await mainTable.write([
@@ -75,7 +78,9 @@ async function siteAlreadyScraped(formattedUrl: string): Promise<boolean> {
   });
 
   if (!response.ok) {
-    throw new Error(`SMOLTABLE FAILED D: : ${response.status} ${await response.text()}`);
+    throw new Error(
+      `SMOLTABLE FAILED D: : ${response.status} ${await response.text()}`
+    );
   }
 
   const data = (await response.json()) as {
@@ -92,7 +97,9 @@ async function removeSiteFromQueue(rowKey: string): Promise<void> {
   await queueTable.deleteRow(rowKey);
 }
 
-async function getNextFromQueue(cnt = 1): Promise<{ rowKey: string; url: string }[]> {
+async function getNextFromQueue(
+  cnt = 1
+): Promise<{ rowKey: string; url: string }[]> {
   console.error("Getting next queued item");
 
   const prefixUrl = `${SMOLTABLE_URL}/v1/table/${QUEUE_TABLE}/scan`;
@@ -114,7 +121,9 @@ async function getNextFromQueue(cnt = 1): Promise<{ rowKey: string; url: string 
   });
 
   if (!response.ok) {
-    throw new Error(`SMOLTABLE FAILED D: : ${response.status} ${await response.text()}`);
+    throw new Error(
+      `SMOLTABLE FAILED D: : ${response.status} ${await response.text()}`
+    );
   }
 
   const data = (await response.json()) as {
@@ -164,14 +173,14 @@ async function enqueueSite(anchors: { href: string }[]): Promise<void> {
             },
           },
         ],
-      })),
+      }))
     );
   }
 }
 
 async function writeSite(
   prevSite: { formattedUrl: string; lang: string; title: string },
-  anchors: { formattedUrl: string; text: string }[],
+  anchors: { formattedUrl: string; text: string }[]
 ): Promise<void> {
   console.error(`Writing ${1 + anchors.length} items`);
 
@@ -210,44 +219,49 @@ async function writeSite(
             timestamp: 0,
           },
         ],
-      })),
+      }))
     );
   }
 }
 
-const blacklist = readFileSync("blacklist.txt", "utf-8").split("\n").filter(Boolean);
+const blacklist = existsSync("blacklist.txt")
+  ? readFileSync("blacklist.txt", "utf-8").split("\n").filter(Boolean)
+  : [];
 
-const HREF_BLACKLIST = [
-  "#",
-  "/w/",
-  "/api/",
+const HREF_BLACKLIST: RegExp[] = [
+  /.pdf$/,
+  /.exe$/,
 
-  "tel:",
-  "mailto:",
+  /^#/,
+  /^\/w\//,
+  /^\/api\//,
+
+  /^tel:/,
+  /^mailto:/,
 
   // https://en.wikipedia.org/wiki/Wikipedia:Namespace
-  "/wiki/Help:",
-  "/wiki/Template:",
-  "/wiki/Special:",
-  "/wiki/Wikipedia:",
-  "/wiki/User:",
-  "/wiki/File:",
-  "/wiki/MediaWiki:",
-  "/wiki/Category:",
-  "/wiki/Portal:",
-  "/wiki/Draft:",
-  "/wiki/TimedText:",
-  "/wiki/Module:",
-  "/wiki/Thread:",
-  "/wiki/Summary:",
-  "/wiki/Book:",
-  "/wiki/Course:",
-  "/wiki/Talk:",
-  "/wiki/Template_talk:",
+  /^\/wiki\/Help:/,
+  /^\/wiki\/Template:/,
+  /^\/wiki\/Special:/,
+  /^\/wiki\/Wikipedia:/,
+  /^\/wiki\/User:/,
+  /^\/wiki\/File:/,
+  /^\/wiki\/MediaWiki:/,
+  /^\/wiki\/Category:/,
+  /^\/wiki\/Portal:/,
+  /^\/wiki\/Draft:/,
+  /^\/wiki\/TimedText:/,
+  /^\/wiki\/Module:/,
+  /^\/wiki\/Thread:/,
+  /^\/wiki\/Summary:/,
+  /^\/wiki\/Book:/,
+  /^\/wiki\/Course:/,
+  /^\/wiki\/Talk:/,
+  /^\/wiki\/Template_talk:/,
 ];
 
 function isBlacklisted(url: URL): boolean {
-  return HREF_BLACKLIST.some((x) => url.pathname.startsWith(x));
+  return HREF_BLACKLIST.some((regex) => regex.test(url.pathname));
 }
 
 function reverseDomain(url: string): string {
@@ -268,7 +282,9 @@ async function crawlSite(url: string, force = false): Promise<void> {
   }
 
   const reversedDomain = reverseDomain(url);
-  const formattedUrl = STORE_SUB_PAGES ? reversedDomain + new URL(url).pathname : reversedDomain;
+  const formattedUrl = STORE_SUB_PAGES
+    ? reversedDomain + new URL(url).pathname
+    : reversedDomain;
 
   if (!force) {
     if (await siteAlreadyScraped(formattedUrl)) {
@@ -350,9 +366,11 @@ async function crawlSite(url: string, force = false): Promise<void> {
         formattedUrl,
       },
       anchors.map(({ text, href }) => ({
-        formattedUrl: STORE_SUB_PAGES ? reversedDomain + new URL(href).pathname : reversedDomain,
+        formattedUrl: STORE_SUB_PAGES
+          ? reversedDomain + new URL(href).pathname
+          : reversedDomain,
         text,
-      })),
+      }))
     );
 
     if (anchors.length) {
@@ -363,7 +381,9 @@ async function crawlSite(url: string, force = false): Promise<void> {
       await storeDocument(formattedUrl, html);
     }
   } else {
-    console.error(`Response failed with ${response.status}, adding to blacklist`);
+    console.error(
+      `Response failed with ${response.status}, adding to blacklist`
+    );
     blacklist.push(url);
     await appendFile("blacklist.txt", `${url}\n`);
   }
@@ -425,7 +445,7 @@ for (let i = 0; i < LIMIT; i++) {
           console.error("FATAL ERROR", error);
         }
         await removeSiteFromQueue(rowKey);
-      }),
+      })
     );
   } else {
     console.error("=== ENTRY POINT");
