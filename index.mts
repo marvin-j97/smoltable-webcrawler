@@ -434,23 +434,27 @@ await queueTable.createColumnFamilies({
 let page = 0;
 
 for (let i = 0; i < LIMIT; i++) {
-  const head = await getNextFromQueue(PARALLELISM);
+  try {
+    const head = await getNextFromQueue(PARALLELISM);
 
-  if (head.length) {
-    await Promise.all(
-      head.map(async ({ rowKey, url }) => {
-        try {
-          await crawlSite(url);
-        } catch (error) {
-          console.error("FATAL ERROR", error);
-        }
-        await removeSiteFromQueue(rowKey);
-      })
-    );
-  } else {
-    console.error("=== ENTRY POINT");
-    //const STARTING_POINT = `https://news.ycombinator.com/?p=${page++}`;
-    await crawlSite(ENTRY_POINT, true);
+    if (head.length) {
+      await Promise.all(
+        head.map(async ({ rowKey, url }) => {
+          try {
+            await crawlSite(url);
+          } catch (error) {
+            console.error("CRAWL ERROR", error);
+          }
+          await removeSiteFromQueue(rowKey);
+        })
+      );
+    } else {
+      console.error("=== ENTRY POINT");
+      //const STARTING_POINT = `https://news.ycombinator.com/?p=${page++}`;
+      await crawlSite(ENTRY_POINT, true);
+    }
+  } catch (error) {
+    console.error("LOOP ERROR", error);
   }
 }
 
