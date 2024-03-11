@@ -1,13 +1,22 @@
 const SMOLTABLE_URL = "http://localhost:9876";
 
+export function createColumnKey(family: string, column?: string): string {
+  return column ? `${family}:${column}` : family;
+}
+
 type CellValue =
-  | { String: string }
-  | { Byte: number }
-  | { Boolean: boolean }
-  | { I32: number }
-  | { I64: number }
-  | { F32: number }
-  | { F64: number };
+  | {
+      type: "string";
+      value: string;
+    }
+  | {
+      type: "i32" | "i64" | "f32" | "f64" | "byte";
+      value: number;
+    }
+  | {
+      type: "boolean";
+      value: boolean;
+    };
 
 export class Smoltable {
   name: string;
@@ -34,17 +43,22 @@ export class Smoltable {
       };
     }[];
   }) {
-    const res = await fetch(`${SMOLTABLE_URL}/v1/table/${this.name}/column-family`, {
-      method: "POST",
-      body: JSON.stringify(input),
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
+    const res = await fetch(
+      `${SMOLTABLE_URL}/v1/table/${this.name}/column-family`,
+      {
+        method: "POST",
+        body: JSON.stringify(input),
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
 
     if (!res.ok) {
       if (res.status != 409) {
-        throw new Error(`SMOLTABLE FAILED WITH ${res.status}: ${await res.text()}`);
+        throw new Error(
+          `SMOLTABLE FAILED WITH ${res.status}: ${await res.text()}`
+        );
       }
     }
   }
@@ -64,19 +78,20 @@ export class Smoltable {
     });
 
     if (!response.ok) {
-      throw new Error(`SMOLTABLE FAILED D: : ${response.status} ${await response.text()}`);
+      throw new Error(
+        `SMOLTABLE FAILED D: : ${response.status} ${await response.text()}`
+      );
     }
   }
 
   public async write(
     items: {
       row_key: string;
-      cells: {
+      cells: ({
         column_key: string;
-        timestamp?: number;
-        value: CellValue;
-      }[];
-    }[],
+        time?: number;
+      } & CellValue)[];
+    }[]
   ) {
     const writeUrl = `${SMOLTABLE_URL}/v1/table/${this.name}/write`;
 
@@ -91,7 +106,9 @@ export class Smoltable {
     });
 
     if (!response.ok) {
-      throw new Error(`SMOLTABLE FAILED D: : ${response.status} ${await response.text()}`);
+      throw new Error(
+        `SMOLTABLE FAILED D: : ${response.status} ${await response.text()}`
+      );
     }
   }
 }

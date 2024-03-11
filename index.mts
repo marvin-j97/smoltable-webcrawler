@@ -9,7 +9,7 @@ import { resolve as resolveUrl } from "node:url";
 
 import { load as cheerio } from "cheerio";
 
-import { Smoltable } from "./table.mjs";
+import { Smoltable, createColumnKey } from "./table.mjs";
 
 //
 // CONFIGURATION ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
@@ -43,10 +43,9 @@ async function storeDocument(
       row_key: formattedUrl,
       cells: [
         {
-          column_key: "contents:",
-          value: {
-            String: html,
-          },
+          column_key: createColumnKey("contents"),
+          type: "string",
+          value: html,
         },
       ],
     },
@@ -70,7 +69,7 @@ async function siteAlreadyScraped(formattedUrl: string): Promise<boolean> {
             key: formattedUrl,
           },
           column: {
-            key: "title:",
+            key: createColumnKey("title"),
           },
         },
       ],
@@ -115,7 +114,7 @@ async function getNextFromQueue(
         limit: cnt,
       },
       column: {
-        key: "url:",
+        key: createColumnKey("url"),
       },
     }),
   });
@@ -132,7 +131,7 @@ async function getNextFromQueue(
         row_key: string;
         columns: {
           url: {
-            "": { value: { String: string } }[];
+            "": { time: number; value: string }[];
           };
         };
       }[];
@@ -141,7 +140,7 @@ async function getNextFromQueue(
 
   return data.result.rows.map((row) => ({
     rowKey: row.row_key,
-    url: row.columns.url[""].at(0)!.value.String,
+    url: row.columns.url[""].at(0)!.value,
   }));
 }
 
@@ -167,10 +166,9 @@ async function enqueueSite(anchors: { href: string }[]): Promise<void> {
         row_key: randomUUID(),
         cells: [
           {
-            column_key: "url:",
-            value: {
-              String: href,
-            },
+            column_key: createColumnKey("url"),
+            type: "string",
+            value: href,
           },
         ],
       }))
@@ -189,18 +187,16 @@ async function writeSite(
       row_key: prevSite.formattedUrl,
       cells: [
         {
-          column_key: "language:",
-          value: {
-            String: prevSite.lang,
-          },
-          timestamp: 0,
+          column_key: createColumnKey("language"),
+          type: "string",
+          value: prevSite.lang,
+          time: 0,
         },
         {
-          column_key: "title:",
-          value: {
-            String: prevSite.title,
-          },
-          timestamp: 0,
+          column_key: createColumnKey("title"),
+          type: "string",
+          value: prevSite.title,
+          time: 0,
         },
       ],
     },
@@ -212,11 +208,10 @@ async function writeSite(
         row_key: formattedUrl,
         cells: [
           {
-            column_key: `anchor:${prevSite.formattedUrl}`,
-            value: {
-              String: text,
-            },
-            timestamp: 0,
+            column_key: createColumnKey("anchor", prevSite.formattedUrl),
+            type: "string",
+            value: text,
+            time: 0,
           },
         ],
       }))
@@ -382,10 +377,13 @@ async function crawlSite(url: string, force = false): Promise<void> {
     }
   } else {
     console.error(
-      `Response failed with ${response.status}, adding to blacklist`
+      `Response failed with ${response.status} !!!!!!!!!!!!!!!!!!!!!!!!!`
     );
-    blacklist.push(url);
-    await appendFile("blacklist.txt", `${url}\n`);
+
+    if (response.status != 404) {
+      blacklist.push(url);
+      await appendFile("blacklist.txt", `${url}\n`);
+    }
   }
 }
 
