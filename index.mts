@@ -2,11 +2,11 @@
  * USE RESPONSIBLY
  */
 
-import { randomUUID } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { appendFile } from "node:fs/promises";
 import { resolve as resolveUrl } from "node:url";
 
+import { createId } from '@paralleldrive/cuid2';
 import { load as cheerio } from "cheerio";
 
 import { Smoltable, createColumnKey } from "./table.mjs";
@@ -163,7 +163,7 @@ async function enqueueSite(anchors: { href: string }[]): Promise<void> {
   for (const slice of sliceGenerator(anchors, 5_000)) {
     await queueTable.write(
       slice.map(({ href }) => ({
-        row_key: randomUUID(),
+        row_key: createId(),
         cells: [
           {
             column_key: createColumnKey("url"),
